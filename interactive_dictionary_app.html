@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Dictionary</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --border: #e0e0e0;
+      --border-strong: #d0d0d0;
+      --text-main: #222222;
+      --text-muted: #6b7280;
+      --accent: #007bff;
+      --accent-hover: #0062cc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      margin: 0 0 12px;
+    }
+
+    h2, h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .section-title span.badge {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: var(--text-muted);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    input:not([type]) {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      font-size: 0.9rem;
+    }
+
+    input::placeholder {
+      color: #9ca3af;
+    }
+
+    .form-row {
+      margin-bottom: 10px;
+    }
+
+    .helper-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .required {
+      color: #dc2626;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #d4d4d8;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn-sm {
+      padding: 6px 8px;
+      font-size: 0.85rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+
+    #words {
+      margin-top: 10px;
+    }
+
+    /* Table styles */
+    .words-table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table.words-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    table.words-table th,
+    table.words-table td {
+      border: 1px solid var(--border-strong);
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    table.words-table th {
+      background: #f3f4f6;
+      font-weight: 600;
+    }
+
+    table.words-table td.actions {
+      text-align: center;
+    }
+
+    /* Language buttons */
+    .lang-btn {
+      width: 100%;
+      text-align: left;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f9fafb;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Layout */
+    .layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    #sidebar {
+      width: 100%;
+    }
+
+    #main {
+      flex: 1;
+    }
+
+    #noLangMsg {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    @media (min-width: 700px) {
+      .layout {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+
+      #sidebar {
+        width: 230px;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <div id="sidebar">
+      <h1>Interactive Dictionary</h1>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>Languages</h2>
+        </div>
+        <div id="langList"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h3>Add language</h3>
+        </div>
+        <div class="form-row">
+          <label for="newLang">Language name</label>
+          <input id="newLang" placeholder="e.g. Arabic, Hebrew, Spanish" />
+        </div>
+        <button id="addLangBtn" type="button" class="btn btn-primary btn-block btn-sm">Add language</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="noLangMsg">No language chosen</div>
+
+      <div id="contentArea" style="display:none;">
+        <h2 id="currentLangTitle" class="section-title"></h2>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>Add word</h3>
+            <span class="badge">for this language</span>
+          </div>
+          <p class="helper-text">Only <span class="required">Word</span> is required. Other fields are optional.</p>
+          <form id="addForm">
+            <div class="form-row">
+              <label for="word">Word <span class="required">*</span></label>
+              <input id="word" placeholder="Original word in this language" required />
+            </div>
+
+            <div class="form-row">
+              <label for="translit">Transliteration (optional)</label>
+              <input id="translit" placeholder="How you read or pronounce it" />
+            </div>
+
+            <div class="form-row">
+              <label for="translation">Translation (optional)</label>
+              <input id="translation" placeholder="Translation to your native language" />
+            </div>
+
+            <div class="form-row">
+              <label for="eng">English translation (optional)</label>
+              <input id="eng" placeholder="English meaning" />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Add word</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>Import from XLSX</h3>
+          </div>
+          <p class="helper-text">First row is header. Columns: Word, Translit, Translation, English.</p>
+          <div class="form-row" style="margin-bottom: 0;">
+            <input type="file" id="importFile" accept=".xlsx,.xls" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>Search</h3>
+          </div>
+          <div class="form-row" style="margin-bottom: 0;">
+            <input id="search" placeholder="Search by word, translit or translation" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h3>Words</h3>
+          </div>
+          <div id="words"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const WORDS_KEY = "dict_words";
+  const LANGS_KEY = "dict_languages";
+
+  function loadWords() {
+    const raw = JSON.parse(localStorage.getItem(WORDS_KEY) || "[]");
+    // Ensure each word has a stable id
+    return raw.map(w => ({
+      id: w.id || (Date.now().toString() + Math.random().toString(16).slice(2)),
+      lang: w.lang || "",
+      word: w.word || "",
+      translit: w.translit || "",
+      translation: w.translation || "",
+      eng: w.eng || ""
+    }));
+  }
+
+  function saveWords(words) {
+    localStorage.setItem(WORDS_KEY, JSON.stringify(words));
+  }
+
+  function loadLanguages() {
+    const stored = JSON.parse(localStorage.getItem(LANGS_KEY) || "[]");
+    const fromWords = [...new Set(words.map(w => w.lang).filter(Boolean))];
+    const set = new Set([...stored, ...fromWords]);
+    return Array.from(set);
+  }
+
+  function saveLanguages(langs) {
+    localStorage.setItem(LANGS_KEY, JSON.stringify(langs));
+  }
+
+  function render(wordsForLang) {
+    const container = document.getElementById("words");
+    container.innerHTML = "";
+    if (!wordsForLang.length) {
+      container.textContent = "No words yet";
+      return;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "words-table-wrapper";
+
+    const table = document.createElement("table");
+    table.className = "words-table";
+
+    const thead = document.createElement("thead");
+    thead.innerHTML = `
+      <tr>
+        <th>Word</th>
+        <th>Translit</th>
+        <th>Translation</th>
+        <th>English</th>
+        <th>Actions</th>
+      </tr>
+    `;
+
+    const tbody = document.createElement("tbody");
+    wordsForLang.forEach(w => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${w.word}</td>
+        <td>${w.translit || "-"}</td>
+        <td>${w.translation || "-"}</td>
+        <td>${w.eng || "-"}</td>
+        <td class="actions">
+          <button data-id="${w.id}" class="delete">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
+  }
+
+  function filter(list, q) {
+    q = q.toLowerCase();
+    if (!q) return list;
+    return list.filter(w =>
+      ["word", "translit", "translation", "eng"].some(key =>
+        (w[key] || "").toLowerCase().includes(q)
+      )
+    );
+  }
+
+  let words = loadWords();
+  let languages = [];
+  let currentLang = null;
+
+  languages = loadLanguages();
+
+  function updateLayout() {
+    const msg = document.getElementById("noLangMsg");
+    const area = document.getElementById("contentArea");
+    const title = document.getElementById("currentLangTitle");
+    const searchInput = document.getElementById("search");
+
+    if (!currentLang) {
+      msg.style.display = "block";
+      msg.textContent = "No language chosen";
+      area.style.display = "none";
+      return;
+    }
+
+    msg.style.display = "none";
+    area.style.display = "block";
+    title.textContent = currentLang;
+
+    const langWords = words.filter(w => w.lang === currentLang);
+    const query = (searchInput.value || "").trim();
+    const toRender = filter(langWords, query);
+    render(toRender);
+  }
+
+  function renderLangList() {
+    const list = document.getElementById("langList");
+    list.innerHTML = "";
+    if (!languages.length) {
+      const small = document.createElement("div");
+      small.style.fontSize = "0.9em";
+      small.style.color = "#777";
+      small.textContent = "No languages yet";
+      list.appendChild(small);
+      return;
+    }
+
+    languages.forEach(lang => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = lang;
+      btn.style.display = "block";
+      btn.style.marginBottom = "6px";
+      btn.className = lang === currentLang ? "lang-btn active" : "lang-btn";
+      btn.addEventListener("click", () => {
+        currentLang = lang;
+        document.getElementById("search").value = "";
+        updateLayout();
+        renderLangList();
+      });
+      list.appendChild(btn);
+    });
+  }
+
+  // Initial render
+  renderLangList();
+  updateLayout();
+
+  // Add word
+  document.getElementById("addForm").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!currentLang) return;
+
+    const wordInput = document.getElementById("word");
+    const translitInput = document.getElementById("translit");
+    const translationInput = document.getElementById("translation");
+    const engInput = document.getElementById("eng");
+
+    const newWordText = wordInput.value.trim();
+    if (!newWordText) return;
+
+    const newWord = {
+      id: Date.now().toString() + Math.random().toString(16).slice(2),
+      lang: currentLang,
+      word: newWordText,
+      translit: translitInput.value.trim(),
+      translation: translationInput.value.trim(),
+      eng: engInput.value.trim()
+    };
+
+    words.push(newWord);
+    saveWords(words);
+    updateLayout();
+    e.target.reset();
+  });
+
+  // Add new language
+  document.getElementById("addLangBtn").addEventListener("click", () => {
+    const input = document.getElementById("newLang");
+    const newL = input.value.trim();
+    if (!newL) return;
+    if (!languages.includes(newL)) {
+      languages.push(newL);
+      saveLanguages(languages);
+    }
+    currentLang = newL;
+    input.value = "";
+    renderLangList();
+    document.getElementById("search").value = "";
+    updateLayout();
+  });
+
+  // Import from XLSX for current language
+  const importInput = document.getElementById("importFile");
+  if (importInput) {
+    importInput.addEventListener("change", e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!currentLang) {
+        alert("Please choose a language first.");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = event => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (!rows || rows.length <= 1) {
+            alert("No data found in the first sheet.");
+          } else {
+            // Skip header row (index 0)
+            rows.slice(1).forEach(row => {
+              const wordText = (row[0] || "").toString().trim();
+              if (!wordText) return;
+
+              const translit = ((row[1] || "") + "").trim();
+              const translation = ((row[2] || "") + "").trim();
+              const eng = ((row[3] || "") + "").trim();
+
+              const existing = words.find(w =>
+                w.lang === currentLang &&
+                (w.word || "").toLowerCase().trim() === wordText.toLowerCase()
+              );
+
+              if (existing) {
+                if (translit) existing.translit = translit;
+                if (translation) existing.translation = translation;
+                if (eng) existing.eng = eng;
+              } else {
+                const newWord = {
+                  id: Date.now().toString() + Math.random().toString(16).slice(2),
+                  lang: currentLang,
+                  word: wordText,
+                  translit,
+                  translation,
+                  eng
+                };
+                words.push(newWord);
+              }
+            });
+            saveWords(words);
+            updateLayout();
+            updateLayout();
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Could not read this file. Make sure it is a simple XLSX with columns: Word, Translit, Translation, English.");
+        } finally {
+          e.target.value = "";
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Search within current language
+  document.getElementById("search").addEventListener("input", () => {
+    if (!currentLang) return;
+    updateLayout();
+  });
+
+  // Delete word
+  document.getElementById("words").addEventListener("click", e => {
+    if (!e.target.classList.contains("delete")) return;
+    const id = e.target.getAttribute("data-id");
+    const idx = words.findIndex(w => String(w.id) === String(id));
+    if (idx === -1) return;
+    words.splice(idx, 1);
+    saveWords(words);
+    updateLayout();
+  });
+</script>
+</body>
+</html>
